@@ -1,0 +1,17 @@
+{
+  "name": "mock-trade-generator",
+  "version": "1.0.0",
+  "description": "High-frequency mock trade data generator for the Trading Dashboard project",
+  "main": "index.js",
+  "bin": {
+    "mock-trades": "./cli.js"
+  },
+  "scripts": {
+    "start": "node cli.js",
+    "demo": "node cli.js --count 20 --pretty",
+    "stream": "node cli.js --rate 1000 --stats",
+    "benchmark": "node cli.js --rate 10000 --count 100000 --stats 2>/dev/null | wc -l"
+  },
+  "keywords": ["trading", "mock-data", "streaming", "dashboard"],
+  "license": "MIT"
+}
