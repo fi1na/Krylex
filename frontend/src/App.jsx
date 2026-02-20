@@ -1,20 +1,45 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useSelector } from "react-redux";
+import { selectDarkMode } from "./store";
+import { useWebSocket } from "./hooks/useWebSocket";
+import { Header } from "./components/Header";
+import { MetricsPanel } from "./components/MetricsPanel";
+import { PriceChart } from "./components/PriceChart";
+import { TradeTable } from "./components/TradeTable";
 
 function App() {
-  return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
-      <header className="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-50">
-            Trading Dashboard
-          </h1>
-        </div>
-      </header>
+  const darkMode = useSelector(selectDarkMode);
 
-      <main className="max-w-7xl mx-auto px-6 py-6">
-        <p className="text-neutral-600 dark:text-neutral-400">
-          Setup Completion ..... !
-        </p>
+  // Initialize WebSocket connection
+  useWebSocket(import.meta.env.VITE_WS_URL || "ws://localhost:8080");
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+      document.body.classList.add("dark");
+      // Remove any inline styles so CSS takes over
+      document.body.style.backgroundColor = "";
+      document.body.style.color = "";
+    } else {
+      document.documentElement.classList.remove("dark");
+      document.body.classList.remove("dark");
+      document.body.style.backgroundColor = "";
+      document.body.style.color = "";
+    }
+  }, [darkMode]);
+
+  return (
+    <div
+      className={`min-h-screen transition-colors ${
+        darkMode ? "bg-transparent text-white" : "bg-transparent text-slate-900"
+      }`}
+    >
+      <Header />
+
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        <MetricsPanel />
+        <PriceChart />
+        <TradeTable />
       </main>
     </div>
   );

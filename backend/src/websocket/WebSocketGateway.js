@@ -1,342 +1,165 @@
-/**
- * WebSocket Server Module
- * Manages real-time client connections and broadcasts Kafka messages
- */
-
 const WebSocket = require("ws");
-const http = require("http");
 const { v4: uuidv4 } = require("uuid");
 
 class WebSocketGateway {
   constructor() {
-    this.server = null;
+    this.port = 8080;
     this.wss = null;
     this.clients = new Map();
-    this.messageBuffer = [];
-    this.messageBufferSize = 50;
-    this.broadcastInterval = null;
     this.isRunning = false;
+    this.tradeBuffer = [];
+    this.broadcastInterval = null;
   }
 
-  /**
-   * Initialize WebSocket server
-   */
-  initialize() {
-    const port = process.env.WS_PORT || 8080;
-    const host = process.env.WS_HOST || "localhost";
-
-    this.server = http.createServer((req, res) => {
-      if (req.url === "/health") {
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(
-          JSON.stringify({
-            status: "ok",
-            clients: this.clients.size,
-            bufferedMessages: this.messageBuffer.length,
-          }),
-        );
-      } else if (req.url === "/metrics") {
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(this.getMetrics()));
-      } else {
-        res.writeHead(404);
-        res.end();
-      }
-    });
-
-    this.wss = new WebSocket.Server({ server: this.server });
-
-    this.wss.on("connection", (ws) => this.handleClientConnection(ws));
-    this.wss.on("error", (error) => {
-      console.error("[WebSocket] Server error:", error.message);
-    });
-
-    this.server.listen(port, host, () => {
-      console.log(`[WebSocket] Server listening on ws://${host}:${port}`);
-      this.isRunning = true;
-    });
-
-    // Start batch broadcast interval
-    this.startBatchBroadcast();
-  }
-
-  /**
-   * Handle new client connection
-   */
-  handleClientConnection(ws) {
-    const clientId = uuidv4();
-    const clientInfo = {
-      id: clientId,
-      ws,
-      connectedAt: new Date(),
-      messagesReceived: 0,
-      messagesSent: 0,
-      isAlive: true,
-    };
-
-    this.clients.set(clientId, clientInfo);
-    console.log(
-      `[WebSocket] Client connected: ${clientId} (Total: ${this.clients.size})`,
-    );
-
-    // Send welcome message
-    ws.send(
-      JSON.stringify({
-        type: "connection",
-        clientId,
-        timestamp: Date.now(),
-        message: "Connected to trading dashboard backend",
-      }),
-    );
-
-    // Handle incoming messages
-    ws.on("message", (data) => {
-      try {
-        const message = JSON.parse(data);
-        this.handleClientMessage(clientId, message);
-      } catch (error) {
-        console.error(
-          `[WebSocket] Message parse error from ${clientId}:`,
-          error.message,
-        );
-      }
-    });
-
-    // Handle client close
-    ws.on("close", () => {
-      this.clients.delete(clientId);
-      console.log(
-        `[WebSocket] Client disconnected: ${clientId} (Total: ${this.clients.size})`,
-      );
-    });
-
-    // Handle errors
-    ws.on("error", (error) => {
-      console.error(
-        `[WebSocket] Client error from ${clientId}:`,
-        error.message,
-      );
-    });
-
-    // Heartbeat
-    ws.isAlive = true;
-    ws.on("pong", () => {
-      ws.isAlive = true;
-    });
-  }
-
-  /**
-   * Handle incoming client messages
-   */
-  handleClientMessage(clientId, message) {
-    const clientInfo = this.clients.get(clientId);
-    if (clientInfo) {
-      clientInfo.messagesReceived++;
+  static initialize() {
+    if (!WebSocketGateway.instance) {
+      WebSocketGateway.instance = new WebSocketGateway();
     }
-
-    switch (message.type) {
-      case "subscribe":
-        console.log(
-          `[WebSocket] Client ${clientId} subscribed to ${message.channel}`,
-        );
-        break;
-      case "ping":
-        this.sendToClient(clientId, {
-          type: "pong",
-          timestamp: Date.now(),
-        });
-        break;
-      default:
-        console.log(
-          `[WebSocket] Unknown message type from ${clientId}:`,
-          message.type,
-        );
-    }
+    WebSocketGateway.instance.start();
   }
 
-  /**
-   * Add trade to message buffer for batch broadcasting
-   */
-  addTradeToBatch(trade) {
-    this.messageBuffer.push({
-      type: "trade",
-      data: trade,
-      timestamp: Date.now(),
-    });
+  start() {
+    this.wss = new WebSocket.Server({ port: this.port });
+    this.isRunning = true;
+    this.setupServer();
+    console.log(`[WebSocket] Server listening on ws://localhost:${this.port}`);
 
-    // Flush if buffer reaches size limit
-    if (this.messageBuffer.length >= this.messageBufferSize) {
-      this.broadcastBatch();
-    }
-  }
-
-  /**
-   * Broadcast a single trade (immediate)
-   */
-  broadcastTrade(trade) {
-    const message = JSON.stringify({
-      type: "trade",
-      data: trade,
-      timestamp: Date.now(),
-    });
-
-    this.broadcast(message);
-  }
-
-  /**
-   * Start periodic batch broadcast
-   */
-  startBatchBroadcast() {
+    // Broadcast batched trades every 100ms
     this.broadcastInterval = setInterval(() => {
-      if (this.messageBuffer.length > 0) {
-        this.broadcastBatch();
+      if (this.tradeBuffer.length > 0) {
+        this.broadcast({ trades: this.tradeBuffer });
+        this.tradeBuffer = [];
       }
-      this.performHeartbeat();
-    }, 100); // 10 batches per second
+    }, 100);
   }
 
-  /**
-   * Broadcast batched messages to all clients
-   */
-  broadcastBatch() {
-    if (this.messageBuffer.length === 0 || this.clients.size === 0) {
-      return;
-    }
+  setupServer() {
+    this.wss.on("connection", (ws) => {
+      const clientId = uuidv4();
+      const client = {
+        id: clientId,
+        ws,
+        isAlive: true,
+        lastHeartbeat: Date.now(),
+      };
 
-    const batch = {
-      type: "batch",
-      trades: this.messageBuffer,
-      count: this.messageBuffer.length,
-      timestamp: Date.now(),
-    };
+      this.clients.set(clientId, client);
+      console.log(
+        `[WebSocket] Client connected: ${clientId} (Total: ${this.clients.size})`,
+      );
 
-    const message = JSON.stringify(batch);
-
-    for (const [clientId, clientInfo] of this.clients) {
-      if (clientInfo.ws.readyState === WebSocket.OPEN) {
+      ws.on("message", (data) => {
         try {
-          clientInfo.ws.send(message);
-          clientInfo.messagesSent++;
+          const message = JSON.parse(data);
+
+          if (message.type === "ping") {
+            ws.send(JSON.stringify({ type: "pong" }));
+            client.isAlive = true;
+            client.lastHeartbeat = Date.now();
+          }
         } catch (error) {
           console.error(
-            `[WebSocket] Broadcast error to ${clientId}:`,
+            `[WebSocket] Error parsing message from ${clientId}:`,
             error.message,
           );
         }
-      }
-    }
+      });
 
-    this.messageBuffer = [];
-  }
+      ws.on("pong", () => {
+        client.isAlive = true;
+        client.lastHeartbeat = Date.now();
+      });
 
-  /**
-   * Generic broadcast to all connected clients
-   */
-  broadcast(message) {
-    for (const [clientId, clientInfo] of this.clients) {
-      if (clientInfo.ws.readyState === WebSocket.OPEN) {
-        try {
-          clientInfo.ws.send(message);
-          clientInfo.messagesSent++;
-        } catch (error) {
-          console.error(
-            `[WebSocket] Broadcast error to ${clientId}:`,
-            error.message,
-          );
-        }
-      }
-    }
-  }
-
-  /**
-   * Send message to specific client
-   */
-  sendToClient(clientId, data) {
-    const clientInfo = this.clients.get(clientId);
-    if (!clientInfo) return;
-
-    if (clientInfo.ws.readyState === WebSocket.OPEN) {
-      try {
-        clientInfo.ws.send(JSON.stringify(data));
-        clientInfo.messagesSent++;
-      } catch (error) {
-        console.error(`[WebSocket] Send error to ${clientId}:`, error.message);
-      }
-    }
-  }
-
-  /**
-   * Perform heartbeat check
-   */
-  performHeartbeat() {
-    for (const [clientId, clientInfo] of this.clients) {
-      if (!clientInfo.isAlive) {
-        clientInfo.ws.terminate();
+      ws.on("close", () => {
         this.clients.delete(clientId);
         console.log(
-          `[WebSocket] Client terminated (heartbeat timeout): ${clientId}`,
+          `[WebSocket] Client disconnected: ${clientId} (Total: ${this.clients.size})`,
         );
-        continue;
-      }
+      });
 
-      clientInfo.isAlive = false;
-      clientInfo.ws.ping();
+      ws.on("error", (error) => {
+        console.error(
+          `[WebSocket] Error from client ${clientId}:`,
+          error.message,
+        );
+      });
+    });
+
+    // Heartbeat check every 60 seconds
+    setInterval(() => {
+      this.clients.forEach((client, clientId) => {
+        const timeSinceLastHeartbeat = Date.now() - client.lastHeartbeat;
+
+        if (timeSinceLastHeartbeat > 90000) {
+          console.log(
+            `[WebSocket] Client terminated (heartbeat timeout): ${clientId}`,
+          );
+          client.ws.terminate();
+          this.clients.delete(clientId);
+        } else if (client.ws.readyState === WebSocket.OPEN) {
+          client.ws.ping();
+        }
+      });
+    }, 60000);
+  }
+
+  static addTradeToBatch(trade) {
+    if (WebSocketGateway.instance) {
+      WebSocketGateway.instance.tradeBuffer.push(trade);
     }
   }
 
-  /**
-   * Get gateway metrics
-   */
-  getMetrics() {
-    const uptime = process.uptime();
-    let totalMessagesReceived = 0;
-    let totalMessagesSent = 0;
+  broadcast(message) {
+    if (this.clients.size === 0) return;
 
-    for (const clientInfo of this.clients.values()) {
-      totalMessagesReceived += clientInfo.messagesReceived;
-      totalMessagesSent += clientInfo.messagesSent;
-    }
+    const data = JSON.stringify(message);
+    let successCount = 0;
 
-    return {
-      uptime,
-      activeClients: this.clients.size,
-      totalMessagesReceived,
-      totalMessagesSent,
-      bufferedMessages: this.messageBuffer.length,
-      isRunning: this.isRunning,
-      clientDetails: Array.from(this.clients.values()).map((c) => ({
-        id: c.id,
-        connectedAt: c.connectedAt,
-        messagesReceived: c.messagesReceived,
-        messagesSent: c.messagesSent,
-      })),
-    };
-  }
-
-  /**
-   * Graceful shutdown
-   */
-  async shutdown() {
-    if (this.broadcastInterval) {
-      clearInterval(this.broadcastInterval);
-    }
-
-    for (const [, clientInfo] of this.clients) {
-      clientInfo.ws.close(1000, "Server shutting down");
-    }
-
-    return new Promise((resolve) => {
-      if (this.server) {
-        this.server.close(() => {
-          console.log("[WebSocket] Server shut down");
-          this.isRunning = false;
-          resolve();
+    this.clients.forEach((client, clientId) => {
+      if (client.ws.readyState === WebSocket.OPEN) {
+        client.ws.send(data, (error) => {
+          if (error) {
+            console.error(
+              `[WebSocket] Error sending to ${clientId}:`,
+              error.message,
+            );
+          } else {
+            successCount++;
+          }
         });
-      } else {
-        resolve();
       }
     });
+
+    return successCount;
+  }
+
+  static async shutdown() {
+    if (!WebSocketGateway.instance) return;
+
+    const instance = WebSocketGateway.instance;
+    instance.isRunning = false;
+
+    if (instance.broadcastInterval) {
+      clearInterval(instance.broadcastInterval);
+    }
+
+    instance.clients.forEach((client) => {
+      client.ws.close();
+    });
+
+    if (instance.wss) {
+      await new Promise((resolve) => {
+        instance.wss.close(() => {
+          console.log("[WebSocket] Server closed");
+          resolve();
+        });
+      });
+    }
+  }
+
+  getClientCount() {
+    return this.clients.size;
   }
 }
 
-module.exports = new WebSocketGateway();
+module.exports = WebSocketGateway;

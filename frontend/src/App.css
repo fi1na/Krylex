@@ -1,1 +1,401 @@
 @import "tailwindcss";
+
+html.dark {
+    color-scheme: dark;
+}
+
+html {
+    color-scheme: light;
+}
+
+/* =========================
+   BASE STYLES
+========================= */
+@layer base {
+    body {
+        background: #f8fafc;
+        color: #0f172a;
+    }
+
+    body.dark {
+        background: #09090b;
+        color: #f1f5f9;
+    }
+
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+}
+
+/* =========================
+   DARK MODE COMPONENT STYLES
+========================= */
+@layer components {
+    .glass-panel {
+        backdrop-filter: blur(16px);
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1rem;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
+    }
+
+    .glass-panel-hover {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .glass-panel-hover:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 0 20px rgba(6, 182, 212, 0.4), 0 8px 32px 0 rgba(31, 38, 135, 0.3);
+    }
+
+    .btn-glass {
+        padding: 0.5rem 1rem;
+        backdrop-filter: blur(12px);
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: rgba(255, 255, 255, 0.9);
+        border-radius: 0.75rem;
+        font-weight: 600;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+    }
+
+    .btn-glass:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.4);
+        box-shadow: 0 0 12px rgba(6, 182, 212, 0.3);
+    }
+
+    .btn-glass:active {
+        transform: scale(0.95);
+    }
+
+    .input-glass {
+        padding: 0.5rem 1rem;
+        backdrop-filter: blur(12px);
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        border-radius: 0.75rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .input-glass::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    .input-glass:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.4);
+        box-shadow: 0 0 12px rgba(6, 182, 212, 0.3);
+    }
+
+    .select-glass {
+        padding: 0.5rem 1rem;
+        backdrop-filter: blur(12px);
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        border-radius: 0.75rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .select-glass:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.4);
+        box-shadow: 0 0 12px rgba(6, 182, 212, 0.3);
+    }
+
+    .metric-card {
+        position: relative;
+        overflow: hidden;
+        padding: 1.5rem;
+    }
+
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(to right, currentColor, transparent);
+        opacity: 0.6;
+    }
+
+    .trade-row {
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .trade-row:hover {
+        background: rgba(6, 182, 212, 0.1);
+        border-color: rgba(255, 255, 255, 0.1);
+        box-shadow: inset 0 0 12px rgba(6, 182, 212, 0.1);
+    }
+
+    .badge-side {
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.5rem;
+        font-weight: 700;
+        font-size: 0.75rem;
+        backdrop-filter: blur(8px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid;
+    }
+
+    .badge-buy {
+        background: rgba(34, 197, 94, 0.2);
+        color: #86efac;
+        border-color: rgba(34, 197, 94, 0.3);
+    }
+
+    .badge-buy:hover {
+        background: rgba(34, 197, 94, 0.3);
+        box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+    }
+
+    .badge-sell {
+        background: rgba(255, 119, 119, 0.2);
+        color: #ffb3b3;
+        border-color: rgba(255, 119, 119, 0.3);
+    }
+
+    .badge-sell:hover {
+        background: rgba(255, 119, 119, 0.3);
+        box-shadow: 0 0 8px rgba(255, 119, 119, 0.3);
+    }
+
+    .chart-container {
+        position: relative;
+        overflow: hidden;
+        padding: 1.5rem;
+    }
+
+    .chart-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(to right, transparent, rgba(6, 182, 212, 0.5), transparent);
+        opacity: 0.5;
+    }
+
+    .status-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        backdrop-filter: blur(12px);
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .status-connected {
+        background: rgba(34, 197, 94, 0.1);
+        border-color: rgba(34, 197, 94, 0.3);
+        color: #86efac;
+    }
+
+    .status-disconnected {
+        background: rgba(255, 119, 119, 0.1);
+        border-color: rgba(255, 119, 119, 0.3);
+        color: #ffb3b3;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-slide-up {
+        animation: slideUp 0.4s ease-out;
+    }
+}
+
+/* =========================
+   LIGHT MODE OVERRIDES
+========================= */
+
+/* Body */
+html:not(.dark) body {
+    background: linear-gradient(135deg, #f1f5f9 0%, #e0f2fe 25%, #f1f5f9 50%, #ede9fe 75%, #f1f5f9 100%);
+    background-attachment: fixed;
+    color: #0f172a;
+}
+
+/* Scrollbar */
+html:not(.dark) ::-webkit-scrollbar-track {
+    background: #e2e8f0;
+}
+
+html:not(.dark) ::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+}
+
+html:not(.dark) ::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+/* Glass Panel */
+html:not(.dark) .glass-panel {
+    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+html:not(.dark) .glass-panel-hover:hover {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(6, 182, 212, 0.3);
+    box-shadow: 0 4px 20px rgba(6, 182, 212, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* Buttons */
+html:not(.dark) .btn-glass {
+    backdrop-filter: blur(8px);
+    background: rgba(241, 245, 249, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    color: #334155;
+}
+
+html:not(.dark) .btn-glass:hover {
+    background: rgba(226, 232, 240, 0.9);
+    border-color: rgba(6, 182, 212, 0.4);
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.12);
+    color: #0f172a;
+}
+
+/* Inputs */
+html:not(.dark) .input-glass {
+    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    color: #0f172a;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+html:not(.dark) .input-glass::placeholder {
+    color: #94a3b8;
+}
+
+html:not(.dark) .input-glass:focus {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: #06b6d4;
+    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.12), inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* Select */
+html:not(.dark) .select-glass {
+    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    color: #0f172a;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+html:not(.dark) .select-glass:focus {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: #06b6d4;
+    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.12);
+}
+
+/* Metric Card */
+html:not(.dark) .metric-card::before {
+    height: 4px;
+    opacity: 1;
+}
+
+/* Trade Rows */
+html:not(.dark) .trade-row {
+    border-bottom: 1px solid #f1f5f9;
+}
+
+html:not(.dark) .trade-row:hover {
+    background: rgba(6, 182, 212, 0.05);
+    border-color: rgba(6, 182, 212, 0.12);
+    box-shadow: inset 0 0 8px rgba(6, 182, 212, 0.04);
+}
+
+/* Badges */
+html:not(.dark) .badge-buy {
+    background: rgba(34, 197, 94, 0.12);
+    color: #15803d;
+    border-color: rgba(34, 197, 94, 0.25);
+}
+
+html:not(.dark) .badge-buy:hover {
+    background: rgba(34, 197, 94, 0.2);
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.15);
+}
+
+html:not(.dark) .badge-sell {
+    background: rgba(239, 68, 68, 0.12);
+    color: #dc2626;
+    border-color: rgba(239, 68, 68, 0.25);
+}
+
+html:not(.dark) .badge-sell:hover {
+    background: rgba(239, 68, 68, 0.2);
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.15);
+}
+
+/* Status Badge */
+html:not(.dark) .status-badge {
+    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: #334155;
+}
+
+html:not(.dark) .status-connected {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #15803d;
+}
+
+html:not(.dark) .status-disconnected {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #dc2626;
+}
+
+/* Chart Container */
+html:not(.dark) .chart-container {
+    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+html:not(.dark) .chart-container::before {
+    background: linear-gradient(to right, transparent, rgba(6, 182, 212, 0.2), transparent);
+}
